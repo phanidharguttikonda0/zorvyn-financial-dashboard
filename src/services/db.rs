@@ -1,7 +1,8 @@
 use std::time::Duration;
 use sqlx::pool::PoolOptions;
-use sqlx::{Pool, Postgres};
+use sqlx::{Pool, Postgres, Row};
 use sqlx::postgres::PgPoolOptions;
+use crate::models::authentication_models::{UserInfo};
 
 #[derive(Debug, Clone)]
 pub struct DBService {
@@ -26,5 +27,18 @@ impl DBService {
 
     pub async fn create_user(&self) {
         sqlx::query("select 1").fetch_one(&self.connection).await.unwrap();
+    }
+
+    pub async fn get_user_password(&self, email: &str) -> Result<(String, UserInfo, String), sqlx::Error> {
+
+        let result = sqlx::query("select password, role::TEXT, name, status::TEXT FROM users WHERE email = $1")
+        .bind(email).fetch_one(&self.connection).await?;
+
+
+        Ok((result.get("password"), UserInfo {
+            name: result.get("name"),
+            role: result.get("role"),
+            email: email.to_string(),
+        }, result.get("status")))
     }
 }
