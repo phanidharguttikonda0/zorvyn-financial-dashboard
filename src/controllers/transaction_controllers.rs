@@ -12,11 +12,7 @@ pub async fn delete_transaction(State(app_state): State<Arc<AppState>>, Path(tra
 
 }
 
-pub async fn update_transaction_put(State(app_state): State<Arc<AppState>>, Path(id): Path<i64>,Form(transaction): Form<Transaction>) {
-
-}
-
-pub async fn update_transaction_patch(State(app_state): State<Arc<AppState>>, Path(id): Path<i64>, Form(transaction): Form<Transaction>) {
+pub async fn update_transaction(State(app_state): State<Arc<AppState>>, Path(id): Path<i64>, Form(transaction): Form<Transaction>) {
 
 }
 

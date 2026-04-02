@@ -52,9 +52,13 @@ async fn main() {
 }
 
 async fn routes() -> Router {
+    let database = DBService::new().await;
+    database.check_admin_and_init().await;
+
     let state = Arc::new(AppState {
-        database: DBService::new().await
-    }) ;
+        database
+    });
+    
     Router::new().route("/health", get(health_check_point))
         .nest("/authentication", authentication_routes())
         .nest("/transaction", transaction_routes())
