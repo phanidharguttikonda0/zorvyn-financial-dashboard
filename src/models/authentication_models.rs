@@ -22,7 +22,7 @@ pub struct UserInfo {
     pub role: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
     pub sub: String,   // email
     pub name: String,

@@ -11,4 +11,5 @@ pub fn category_routes() -> Router<Arc<AppState>> {
         .route("/:id", get(get_category)) // get's single categories
         .route("/:id", patch(update_category))
         .route("/:id", delete(delete_category))
+        .route_layer(axum::middleware::from_fn(crate::middlewares::rbac::require_admin))
 }

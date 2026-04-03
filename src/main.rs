@@ -25,7 +25,8 @@ mod routes;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
-    database: DBService
+    pub database: DBService,
+    pub rate_limiter: Arc<tokio::sync::Mutex<std::collections::HashMap<std::net::IpAddr, (usize, tokio::time::Instant)>>>,
 }
 
 
@@ -48,7 +49,7 @@ async fn main() {
 
     let tcp_connection = TcpListener::bind("127.0.0.1:7878").await.expect("Can't listen, something running on that port") ;
 
-    axum::serve(tcp_connection, routes().await).await.expect("Can't launch server");
+    axum::serve(tcp_connection, routes().await.into_make_service_with_connect_info::<std::net::SocketAddr>()).await.expect("Can't launch server");
 }
 
 async fn routes() -> Router {
@@ -56,16 +57,22 @@ async fn routes() -> Router {
     database.check_admin_and_init().await;
 
     let state = Arc::new(AppState {
-        database
+        database,
+        rate_limiter: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new())),
     });
     
-    Router::new().route("/health", get(health_check_point))
-        .nest("/authentication", authentication_routes())
+    let protected_routes = Router::new()
         .nest("/transaction", transaction_routes())
         .nest("/categories", category_routes())
         .nest("/counter-parties", counter_party_routes())
         .nest("/dashboard", dashboard_routes())
         .nest("/users", user_routes())
+        .route_layer(axum::middleware::from_fn(crate::middlewares::auth::auth_middleware));
+
+    Router::new().route("/health", get(health_check_point))
+        .nest("/authentication", authentication_routes())
+        .merge(protected_routes)
+        .route_layer(axum::middleware::from_fn_with_state(state.clone(), crate::middlewares::rate_limit::rate_limit_middleware))
         .with_state(state)
 }
 

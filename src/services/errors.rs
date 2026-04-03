@@ -26,6 +26,9 @@ pub enum ApplicationErrors {
     Database(String),
     Validation(String),
     NotFound(String),
+    Unauthorized(String),
+    TokenExpired(String),
+    RateLimitExceeded(String),
 }
 
 impl IntoResponse for ApplicationErrors {
@@ -34,6 +37,9 @@ impl IntoResponse for ApplicationErrors {
             ApplicationErrors::Database(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
             ApplicationErrors::Validation(message) => (StatusCode::BAD_REQUEST, message),
             ApplicationErrors::NotFound(message) => (StatusCode::NOT_FOUND, message),
+            ApplicationErrors::Unauthorized(message) => (StatusCode::UNAUTHORIZED, message),
+            ApplicationErrors::TokenExpired(message) => (StatusCode::UNAUTHORIZED, message),
+            ApplicationErrors::RateLimitExceeded(message) => (StatusCode::TOO_MANY_REQUESTS, message),
         } ;
         let body = Json(ApiError {
             error: status.to_string(),

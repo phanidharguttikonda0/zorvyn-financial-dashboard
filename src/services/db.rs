@@ -193,7 +193,7 @@ impl DBService {
     }
 
     pub async fn get_categories(&self) -> Result<Vec<Category>, sqlx::Error> {
-        let records = sqlx::query("SELECT id, name, type::TEXT, description FROM categories ORDER BY id ASC")
+        let records = sqlx::query("SELECT id, name, type::TEXT FROM categories ORDER BY id ASC")
             .fetch_all(&self.connection)
             .await?;
 
@@ -201,7 +201,7 @@ impl DBService {
             id: Some(row.get::<i32, _>("id") as i64),
             name: Some(row.get("name")),
             category_type: Some(row.get("type")),
-            description: row.try_get("description").unwrap_or(None),
+            description: None,
         }).collect();
         Ok(categories)
     }
@@ -296,6 +296,87 @@ impl DBService {
             email: row.try_get("email").unwrap_or(None),
             phone: row.try_get("phone").unwrap_or(None),
             address: row.try_get("address").unwrap_or(None),
+        })
+    }
+
+    // TRANSACTIONS OPERATIONS
+    pub async fn create_transaction(&self, transaction: crate::models::transaction_models::Transaction) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "INSERT INTO transactions (amount, transaction_date, status, category_id, counterparty_id, created_by) \
+             VALUES ($1, $2, $3::transaction_status, $4, $5, $6)"
+        )
+            .bind(transaction.amount.unwrap_or(0.0))
+            .bind(transaction.transaction_date.unwrap_or_else(|| chrono::Utc::now().naive_utc().date()))
+            .bind(transaction.transaction_status.unwrap_or_else(|| "completed".to_string()))
+            .bind(transaction.category_id.unwrap_or(1) as i32)
+            .bind(transaction.counterparty_id.unwrap_or(1) as i32)
+            .bind(transaction.created_by.unwrap_or(1) as i32)
+            .execute(&self.connection)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn update_transaction(&self, id: i64, transaction: crate::models::transaction_models::Transaction) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            "UPDATE transactions \
+             SET amount = COALESCE($1, amount), \
+                 transaction_date = COALESCE($2, transaction_date), \
+                 status = COALESCE($3::text::transaction_status, status), \
+                 category_id = COALESCE($4, category_id), \
+                 counterparty_id = COALESCE($5, counterparty_id), \
+                 updated_at = CURRENT_TIMESTAMP \
+             WHERE id = $6"
+        )
+            .bind(transaction.amount)
+            .bind(transaction.transaction_date)
+            .bind(transaction.transaction_status)
+            .bind(transaction.category_id.map(|v| v as i32))
+            .bind(transaction.counterparty_id.map(|v| v as i32))
+            .bind(id as i32)
+            .execute(&self.connection)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn delete_transaction(&self, id: i64) -> Result<(), sqlx::Error> {
+        sqlx::query("DELETE FROM transactions WHERE id = $1")
+            .bind(id as i32)
+            .execute(&self.connection)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_transactions(&self) -> Result<Vec<crate::models::transaction_models::Transaction>, sqlx::Error> {
+        let records = sqlx::query("SELECT id, amount, transaction_date, status::TEXT, category_id, counterparty_id, created_by FROM transactions ORDER BY id DESC")
+            .fetch_all(&self.connection)
+            .await?;
+
+        let transactions = records.into_iter().map(|row| crate::models::transaction_models::Transaction {
+            id: Some(row.get::<i32, _>("id") as i64),
+            amount: Some(row.get::<f64, _>("amount")),
+            transaction_date: Some(row.get::<chrono::NaiveDate, _>("transaction_date")),
+            transaction_status: Some(row.get::<String, _>("status")),
+            category_id: Some(row.get::<i32, _>("category_id") as i64),
+            counterparty_id: Some(row.get::<i32, _>("counterparty_id") as i64),
+            created_by: Some(row.get::<i32, _>("created_by") as i64),
+        }).collect();
+        Ok(transactions)
+    }
+
+    pub async fn get_transaction(&self, id: i64) -> Result<crate::models::transaction_models::Transaction, sqlx::Error> {
+        let row = sqlx::query("SELECT id, amount, transaction_date, status::TEXT, category_id, counterparty_id, created_by FROM transactions WHERE id = $1")
+            .bind(id as i32)
+            .fetch_one(&self.connection)
+            .await?;
+
+        Ok(crate::models::transaction_models::Transaction {
+            id: Some(row.get::<i32, _>("id") as i64),
+            amount: Some(row.get::<f64, _>("amount")),
+            transaction_date: Some(row.get::<chrono::NaiveDate, _>("transaction_date")),
+            transaction_status: Some(row.get::<String, _>("status")),
+            category_id: Some(row.get::<i32, _>("category_id") as i64),
+            counterparty_id: Some(row.get::<i32, _>("counterparty_id") as i64),
+            created_by: Some(row.get::<i32, _>("created_by") as i64),
         })
     }
 }
