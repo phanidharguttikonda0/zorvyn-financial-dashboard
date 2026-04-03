@@ -1,4 +1,6 @@
 use std::sync::Arc;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use axum::Router;
 use axum::routing::get;
 use tokio::net::TcpListener;
@@ -45,7 +47,7 @@ async fn main() {
         .init();
 
     info!("Loading the environment...");
-    dotenv::dotenv().ok().expect("Failed to load .env file");
+    dotenv::dotenv().ok();
 
     let tcp_connection = TcpListener::bind("127.0.0.1:7878").await.expect("Can't listen, something running on that port") ;
 
@@ -60,7 +62,7 @@ async fn routes() -> Router {
         database,
         rate_limiter: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new())),
     });
-    
+
     let protected_routes = Router::new()
         .nest("/transaction", transaction_routes())
         .nest("/categories", category_routes())
@@ -70,12 +72,17 @@ async fn routes() -> Router {
         .route_layer(axum::middleware::from_fn(crate::middlewares::auth::auth_middleware));
 
     Router::new().route("/health", get(health_check_point))
+        .route("/docs", get(render_docs))
         .nest("/authentication", authentication_routes())
         .merge(protected_routes)
         .route_layer(axum::middleware::from_fn_with_state(state.clone(), crate::middlewares::rate_limit::rate_limit_middleware))
         .with_state(state)
 }
 
-async fn health_check_point() -> &'static str {
-    "server running successfully!"
+async fn render_docs() -> axum::response::Html<String> {
+    axum::response::Html(std::fs::read_to_string("public/index.html").unwrap_or_else(|_| "Swagger config unreadable.".to_string()))
+}
+
+async fn health_check_point() -> impl IntoResponse {
+    StatusCode::OK
 }

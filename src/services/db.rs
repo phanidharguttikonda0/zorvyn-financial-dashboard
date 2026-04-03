@@ -25,6 +25,11 @@ impl DBService {
         .await
         .expect("Failed to connect to the database") ;
 
+        sqlx::migrate!("./migrations")
+            .run(&pool)
+            .await
+            .expect("Failed to run database migrations");
+
         DBService {
             connection: pool
         }

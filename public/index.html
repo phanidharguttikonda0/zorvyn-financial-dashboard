@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zorvyn Finance Dashboard - API Docs</title>
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.css" >
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js"> </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"> </script>
+    <script>
+      const spec = `
+openapi: 3.0.0
+info:
+  title: Zorvyn Finance Tracker API
+  version: 1.0.0
+  description: Robust API Documentation serving the Zorvyn Dashboard. 
+    Global rate limiting restricts loads to 25req/min. 
+    Strict Role-Based Access Control governs route accessibility mapping out to viewer, analyst, and admin roles correctly avoiding horizontal privilege climbing!
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
+paths:
+  /authentication/sign-in:
+    post:
+      summary: Sign in and receive JWT token
+      security: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Returns an Access Token encoded securely.
+
+  /dashboard/recent:
+    get:
+      summary: Recent Activity
+      description: Roles Allowed - viewer, analyst, admin
+      responses:
+        '200':
+          description: Returns recent transactions summary
+  /dashboard/summary:
+    get:
+      summary: Dashboard Summary
+      description: Roles Allowed - viewer, analyst, admin
+      responses:
+        '200':
+          description: Returns overall balances
+  /dashboard/trends:
+    get:
+      summary: View Monthly Trends
+      description: Roles Allowed - analyst, admin
+      responses:
+        '200':
+          description: Returns historical charting trends
+          
+  /dashboard/by-category:
+    get:
+      summary: View Analytics By Category
+      description: Roles Allowed - analyst, admin
+      responses:
+        '200':
+          description: Returns detailed categorical metric aggregations
+          
+  /transaction:
+    get:
+      summary: Get all transactions
+      description: Roles Allowed - analyst, admin
+      responses:
+        '200':
+          description: Returns paginated transactions mapping.
+    post:
+      summary: Create new transaction
+      description: Roles Allowed - admin
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                category_id:
+                  type: integer
+                counterparty_id:
+                  type: integer
+      responses:
+        '200':
+          description: Validates and securely creates new transaction
+          
+  /transaction/{id}:
+    get:
+      summary: Get Transaction by ID
+      description: Roles Allowed - analyst, admin
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Record Details
+    patch:
+      summary: Update Transaction
+      description: Roles Allowed - admin
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Action Accepted
+    delete:
+      summary: Delete Transaction
+      description: Roles Allowed - admin
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted System
+          
+  /categories:
+    get:
+      summary: All Categories
+      description: Roles Allowed - admin
+      responses:
+        '200':
+          description: Arrays Categories mapped
+    post:
+      summary: Insert Category
+      description: Roles Allowed - admin
+      responses:
+        '200':
+          description: Pushed category config over global constraints
+          
+  /counter-parties:
+    get:
+      summary: System entities mapping
+      description: Roles Allowed - admin
+      responses:
+        '200':
+          description: Mapping returned
+  /users:
+    get:
+      summary: View All App Users
+      description: Roles Allowed - admin
+      responses:
+        '200':
+          description: Retrieves User Schema mapping and roles.
+`;
+      window.onload = function() {
+        SwaggerUIBundle({
+          spec: jsyaml.load(spec),
+          dom_id: '#swagger-ui',
+        });
+      };
+    </script>
+</body>
+</html>
