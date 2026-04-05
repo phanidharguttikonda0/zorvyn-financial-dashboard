@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Zorvyn Finance Dashboard - API Docs</title>
-    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.css" >
+  <meta charset="UTF-8">
+  <title>Zorvyn Finance Dashboard - API Docs</title>
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.css">
 </head>
+
 <body>
-    <div id="swagger-ui"></div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js"> </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"> </script>
-    <script>
-      const spec = `
+  <div id="swagger-ui"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.js"> </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"> </script>
+  <script>
+    const spec = `
 openapi: 3.0.0
 info:
   title: Zorvyn Finance Tracker API
@@ -18,6 +20,8 @@ info:
   description: Robust API Documentation serving the Zorvyn Dashboard. 
     Global rate limiting restricts loads to 25req/min. 
     Strict Role-Based Access Control governs route accessibility mapping out to viewer, analyst, and admin roles correctly avoiding horizontal privilege climbing!
+servers:
+  - url: http://localhost:7878
 components:
   securitySchemes:
     bearerAuth:
@@ -48,21 +52,33 @@ paths:
   /dashboard/recent:
     get:
       summary: Recent Activity
-      description: Roles Allowed - viewer, analyst, admin
+      description: Roles - viewer, analyst, admin
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Returns recent transactions summary
   /dashboard/summary:
     get:
       summary: Dashboard Summary
-      description: Roles Allowed - viewer, analyst, admin
+      description: Roles - viewer, analyst, admin
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Returns overall balances
   /dashboard/trends:
     get:
       summary: View Monthly Trends
-      description: Roles Allowed - analyst, admin
+      description: Roles - analyst, admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: year
+          schema:
+            type: integer
+          required: false
       responses:
         '200':
           description: Returns historical charting trends
@@ -70,7 +86,9 @@ paths:
   /dashboard/by-category:
     get:
       summary: View Analytics By Category
-      description: Roles Allowed - analyst, admin
+      description: Roles - analyst, admin
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Returns detailed categorical metric aggregations
@@ -78,25 +96,41 @@ paths:
   /transaction:
     get:
       summary: Get all transactions
-      description: Roles Allowed - analyst, admin
+      description: Roles - analyst, admin
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Returns paginated transactions mapping.
     post:
       summary: Create new transaction
-      description: Roles Allowed - admin
+      description: Roles - admin
+      security:
+        - bearerAuth: []
       requestBody:
         content:
           application/x-www-form-urlencoded:
             schema:
               type: object
+              required: [amount, transaction_date, status, category_id, counterparty_id, created_by]
               properties:
                 amount:
                   type: number
+                transaction_date:
+                  type: string
+                  format: date
+                  description: "YYYY-MM-DD"
+                status:
+                  type: string
+                  enum: [pending, completed, failed, cancelled]
+                  description: "Transaction state"
                 category_id:
                   type: integer
                 counterparty_id:
                   type: integer
+                created_by:
+                  type: integer
+                  description: "ID of processing Admin User. Explicitly required mapping to internal table constraint."
       responses:
         '200':
           description: Validates and securely creates new transaction
@@ -104,7 +138,9 @@ paths:
   /transaction/{id}:
     get:
       summary: Get Transaction by ID
-      description: Roles Allowed - analyst, admin
+      description: Roles - analyst, admin
+      security:
+        - bearerAuth: []
       parameters:
         - in: path
           name: id
@@ -116,19 +152,34 @@ paths:
           description: Record Details
     patch:
       summary: Update Transaction
-      description: Roles Allowed - admin
+      description: Roles - admin
+      security:
+        - bearerAuth: []
       parameters:
         - in: path
           name: id
           required: true
           schema:
             type: integer
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                status:
+                  type: string
+                  enum: [pending, completed, failed, cancelled]
       responses:
         '200':
           description: Action Accepted
     delete:
       summary: Delete Transaction
-      description: Roles Allowed - admin
+      description: Roles - admin
+      security:
+        - bearerAuth: []
       parameters:
         - in: path
           name: id
@@ -142,38 +193,231 @@ paths:
   /categories:
     get:
       summary: All Categories
-      description: Roles Allowed - admin
+      description: Roles - admin
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Arrays Categories mapped
     post:
       summary: Insert Category
-      description: Roles Allowed - admin
+      description: Roles - admin
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [name, category_type]
+              properties:
+                name:
+                  type: string
+                category_type:
+                  type: string
+                  enum: [income, expenses]
+                  description: Select income or expenses correctly matching database constraint!
+                description:
+                  type: string
       responses:
         '200':
-          description: Pushed category config over global constraints
-          
+          description: Pushed category config
+  /categories/{id}:
+    get:
+      summary: Get Single Category
+      description: Roles - admin
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Object Returned
+    patch:
+      summary: Update Category
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                category_type:
+                  type: string
+                  enum: [income, expenses]
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Delete Category
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+
   /counter-parties:
     get:
       summary: System entities mapping
-      description: Roles Allowed - admin
+      description: Roles - admin
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Mapping returned
+    post:
+      summary: Create Entity
+      description: Roles - admin
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [name, party_type]
+              properties:
+                name:
+                  type: string
+                party_type:
+                  type: string
+                  enum: [vendor, contractor, employee, client]
+                email:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: string
+      responses:
+        '200':
+          description: Created
+  /counter-parties/{id}:
+    patch:
+      summary: Update Counter-Party
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                party_type:
+                  type: string
+                  enum: [vendor, contractor, employee, client]
+      responses:
+        '200':
+          description: Processed
+    delete:
+      summary: Delete Entity
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Unlinked Successfully
+
   /users:
+    post:
+      summary: Create System User
+      description: Roles - admin
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [name, email, password, role, status]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum: [admin, viewer, analyst]
+                status:
+                  type: string
+                  enum: [active, inactive]
+      responses:
+        '200':
+          description: Created
+  /users/{id}:
+    patch:
+      summary: Update User
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum: [admin, viewer, analyst]
+                status:
+                  type: string
+                  enum: [active, inactive]
+      responses:
+        '200':
+          description: Updated
+  /users/get-all-users:
     get:
       summary: View All App Users
       description: Roles Allowed - admin
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Retrieves User Schema mapping and roles.
 `;
-      window.onload = function() {
-        SwaggerUIBundle({
-          spec: jsyaml.load(spec),
-          dom_id: '#swagger-ui',
-        });
-      };
-    </script>
+    window.onload = function () {
+      SwaggerUIBundle({
+        spec: jsyaml.load(spec),
+        dom_id: '#swagger-ui',
+      });
+    };
+  </script>
 </body>
+
 </html>

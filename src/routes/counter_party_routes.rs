@@ -6,9 +6,7 @@ use crate::controllers::counterparty_controllers::{create_party, delete_party, g
 
 pub fn counter_party_routes() -> Router<Arc<AppState>> {
     Router::new()
-        .route("/", post(create_party))
-        .route("/{id}", patch(update_party))
-        .route("/{id}", delete(delete_party))
-        .route("/", get(get_parties)) // returns all counter-parties
+        .route("/", post(create_party).get(get_parties))
+        .route("/{id}", patch(update_party).delete(delete_party))
         .route_layer(axum::middleware::from_fn(crate::middlewares::rbac::require_admin))
 }

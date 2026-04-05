@@ -13,8 +13,8 @@ We have implemented all the core requirements and optional enhancements from the
    - *Viewers* can only see summary data. *Analysts* can view specific transactions and trends. *Admins* have full control to create, update, and delete everything.
 
 2. **Financial Records & Dashboards**:
-   - Built complete CRUD (Create, Read, Update, Delete) APIs for transactions, categories, and counterparties.
-   - Designed specialized Dashboard APIs to fetch summaries like "Monthly Trends", "Total Expenses", and "Recent Activity".
+   - Built complete CRUD (Create, Read, Update, Delete) APIs for transactions, categories, and counterparties securely mapping internal constraints natively avoiding database bloat manually.
+   - **Comprehensive Analytics Engine**: Designed specialized robust Dashboard APIs serving `/dashboard/summary`, `/recent`, `/by-category`, and `/trends?year=...`. Rather than relying on heavy Redis caching infrastructures explicitly, we aggregated pure `sqlx` tracking pipelines utilizing `Extracted` timelines and `COALESCE/FILTER` structures generating instantaneous computations straight from the underlying PostgreSQL bindings efficiently.
 
 3. **Global Rate Limiting (Extra Security)**:
    - Added a security measure that stops users or bots from sending too many requests and crashing the system (limited to 25 requests per minute per user).
@@ -59,8 +59,72 @@ docker compose up --build -d
 *(The backend will wait for the database to boot, set up the tables automatically, and then prepare the server on port 7878)*
 
 ## API Documentation
-You can explore the interactive API documentation and test the routes directly in your browser!
-Once the project is running using Docker, open this link:
+
+Here is a detailed breakdown of core APIs mapped around strict Enum constraints natively evaluated against PostgreSQL:
+
+### Enumeration Types (Constraints)
+- **`category_type`**: `['income', 'expenses']` (Dashboard analytics group by these fields)
+- **`counterparty_type`**: `['vendor', 'contractor', 'employee', 'client']`
+- **`user_role`**: `['admin', 'viewer', 'analyst']` (RBAC intercepts mapping bounds tightly)
+- **`transaction_status`**: `['pending', 'completed', 'failed', 'cancelled']`
+
+### 1. Dashboard Summary
+- **Endpoint**: `GET /dashboard/summary`
+- **Role Requirement**: Viewer, Analyst, Admin
+- **Description**: Returns live aggregation over pure SQL computing total sums bypassing Redis caches natively mapping Enum allocations correctly.
+
+**Successful Response (200 OK)**
+```json
+{
+  "total_income": 50000.0,
+  "total_expenses": 12000.0,
+  "net_balance": 38000.0,
+  "total_transactions": 45
+}
+```
+
+### 2. Dashboard Trends
+- **Endpoint**: `GET /dashboard/trends?year=2024`
+- **Role Requirement**: Analyst, Admin
+- **Description**: Groups records sequentially identifying exact Postgres Native queries.
+
+**Successful Response (200 OK)**
+```json
+{
+  "year": 2024,
+  "months": [
+    {
+      "month": "January",
+      "income": 20000.0,
+      "expenses": 5000.0,
+      "net": 15000.0
+    }
+  ]
+}
+```
+
+### 3. Create Transaction
+- **Endpoint**: `POST /transaction`
+- **Role Requirement**: Admin
+- **Description**: Ingests completely validated transactional dependencies directly throwing explicit constraints explicitly if FK targets bounce back.
+
+**Request Body (x-www-form-urlencoded)**
+- `amount` (float, required): e.g. 500.0
+- `transaction_date` (string, required): e.g. 2024-05-12
+- `status` (string, required): e.g. `completed`
+- `category_id` (integer, required): e.g. 1
+- `counterparty_id` (integer, required): e.g. 2
+- `created_by` (integer, required): e.g. 2 (Admin User ID)
+
+**Successful Response (200 OK)**
+```json
+{
+  "status": "success",
+  "data": "Transaction created successfully"
+}
+```
+
+You can explore the interactive API documentation containing full executable dropdowns natively over your browser using this link:
 **[http://localhost:7878/docs](http://localhost:7878/docs)** 
 
 ## Database Schema Model

@@ -390,7 +390,7 @@ impl DBService {
         let records = sqlx::query(
             r#"SELECT t.id, t.amount, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') as date, 
                       COALESCE(c.name, 'Uncategorized') as category, 
-                      COALESCE(c.type::TEXT, 'expense') as type, 
+                      COALESCE(c.type::TEXT, 'expenses') as type, 
                       COALESCE(p.name, 'Unknown') as counterparty, 
                       t.status::TEXT as status 
                FROM transactions t 
@@ -419,7 +419,7 @@ impl DBService {
         let record = sqlx::query(
             r#"SELECT 
                  COALESCE(SUM(t.amount) FILTER (WHERE c.type = 'income'), 0.0) as total_income,
-                 COALESCE(SUM(t.amount) FILTER (WHERE c.type = 'expense'), 0.0) as total_expenses,
+                 COALESCE(SUM(t.amount) FILTER (WHERE c.type = 'expenses'), 0.0) as total_expenses,
                  COUNT(t.id) as total_transactions
                FROM transactions t 
                LEFT JOIN categories c ON t.category_id = c.id"#
@@ -472,7 +472,7 @@ impl DBService {
                  TRIM(TO_CHAR(t.transaction_date, 'Month')) as month,
                  CAST(EXTRACT(MONTH FROM t.transaction_date) AS INTEGER) as month_num,
                  COALESCE(SUM(t.amount) FILTER (WHERE c.type = 'income'), 0.0) as income,
-                 COALESCE(SUM(t.amount) FILTER (WHERE c.type = 'expense'), 0.0) as expenses
+                 COALESCE(SUM(t.amount) FILTER (WHERE c.type = 'expenses'), 0.0) as expenses
                FROM transactions t 
                JOIN categories c ON t.category_id = c.id 
                WHERE EXTRACT(YEAR FROM t.transaction_date) = $1::double precision 

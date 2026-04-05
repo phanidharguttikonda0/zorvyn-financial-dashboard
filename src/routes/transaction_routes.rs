@@ -12,8 +12,7 @@ pub fn transaction_routes() -> Router<Arc<AppState>> {
 
     let admin_routes = Router::new()
         .route("/", post(create_transaction))
-        .route("/{id}", delete(delete_transaction))
-        .route("/{id}", patch(update_transaction))
+        .route("/{id}", delete(delete_transaction).patch(update_transaction))
         .route_layer(axum::middleware::from_fn(crate::middlewares::rbac::require_admin));
 
     analyst_routes.merge(admin_routes)

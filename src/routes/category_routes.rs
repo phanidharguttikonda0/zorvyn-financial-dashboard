@@ -6,10 +6,7 @@ use crate::controllers::category_controllers::{create_category, delete_category,
 
 pub fn category_routes() -> Router<Arc<AppState>> {
     Router::new()
-        .route("/{id}", post(create_category))
-        .route("/", get(get_categories)) // get's all categories, we will implement cursor pagination
-        .route("/{id}", get(get_category)) // get's single categories
-        .route("/{id}", patch(update_category))
-        .route("/{id}", delete(delete_category))
+        .route("/", post(create_category).get(get_categories)) 
+        .route("/{id}", get(get_category).patch(update_category).delete(delete_category))
         .route_layer(axum::middleware::from_fn(crate::middlewares::rbac::require_admin))
 }
