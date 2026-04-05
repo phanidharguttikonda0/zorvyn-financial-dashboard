@@ -1,13 +1,11 @@
 use std::sync::Arc;
 use axum::extract::{State, Form};
 use axum::Json;
-use axum::response::IntoResponse;
 use tracing::info;
 use validator::Validate;
 use crate::AppState;
-use crate::models::authentication_models::{AuthorizationToken, Claims, SignIn, UserInfo};
+use crate::models::authentication_models::{AuthorizationToken, SignIn};
 use crate::services::errors::{ApiResponse, ApplicationErrors};
-use base64 ;
 use crate::services::authentication_services::{generate_jwt_token, verify_password};
 
 pub async fn sign_in(State(app_state): State<Arc<AppState>>, Form(sign_in):Form<SignIn>)

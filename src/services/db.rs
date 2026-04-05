@@ -1,5 +1,4 @@
 use std::time::Duration;
-use sqlx::pool::PoolOptions;
 use sqlx::{Pool, Postgres, Row};
 use sqlx::postgres::PgPoolOptions;
 use crate::models::authentication_models::{UserInfo};

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use axum::Router;
-use axum::routing::{get, post};
+use axum::routing::get;
 use crate::AppState;
 use crate::controllers::dashboard_controllers::{get_by_category, get_by_trends, get_recent, get_summary};
 
