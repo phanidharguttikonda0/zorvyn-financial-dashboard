@@ -6,6 +6,7 @@ WORKDIR /usr/src/app
 COPY Cargo.toml Cargo.lock ./
 COPY src src
 COPY migrations migrations
+COPY public public
 
 # Execute release build
 RUN cargo build --release

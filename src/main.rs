@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use tower_http::cors::CorsLayer;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Router;
@@ -49,7 +50,7 @@ async fn main() {
     info!("Loading the environment...");
     dotenv::dotenv().ok();
 
-    let tcp_connection = TcpListener::bind("127.0.0.1:7878").await.expect("Can't listen, something running on that port") ;
+    let tcp_connection = TcpListener::bind("0.0.0.0:7878").await.expect("Can't listen, something running on that port") ;
 
     axum::serve(tcp_connection, routes().await.into_make_service_with_connect_info::<std::net::SocketAddr>()).await.expect("Can't launch server");
 }
@@ -71,16 +72,19 @@ async fn routes() -> Router {
         .nest("/users", user_routes())
         .route_layer(axum::middleware::from_fn(crate::middlewares::auth::auth_middleware));
 
+    let cors = CorsLayer::permissive();
+
     Router::new().route("/health", get(health_check_point))
         .route("/docs", get(render_docs))
         .nest("/authentication", authentication_routes())
         .merge(protected_routes)
+        .layer(cors)
         .route_layer(axum::middleware::from_fn_with_state(state.clone(), crate::middlewares::rate_limit::rate_limit_middleware))
         .with_state(state)
 }
 
-async fn render_docs() -> axum::response::Html<String> {
-    axum::response::Html(std::fs::read_to_string("public/index.html").unwrap_or_else(|_| "Swagger config unreadable.".to_string()))
+async fn render_docs() -> axum::response::Html<&'static str> {
+    axum::response::Html(include_str!("../public/index.html"))
 }
 
 async fn health_check_point() -> impl IntoResponse {

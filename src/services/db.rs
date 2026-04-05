@@ -144,11 +144,11 @@ impl DBService {
 
     pub async fn get_user_password(&self, email: &str) -> Result<(String, UserInfo, String), sqlx::Error> {
 
-        let result = sqlx::query("select password, role::TEXT, name, status::TEXT FROM users WHERE email = $1")
+        let result = sqlx::query("select password_hash, role::TEXT, name, status::TEXT FROM users WHERE email = $1")
         .bind(email).fetch_one(&self.connection).await?;
 
 
-        Ok((result.get("password"), UserInfo {
+        Ok((result.get("password_hash"), UserInfo {
             name: result.get("name"),
             role: result.get("role"),
             email: email.to_string(),
@@ -382,6 +382,118 @@ impl DBService {
             category_id: Some(row.get::<i32, _>("category_id") as i64),
             counterparty_id: Some(row.get::<i32, _>("counterparty_id") as i64),
             created_by: Some(row.get::<i32, _>("created_by") as i64),
+        })
+    }
+
+    // DASHBOARD ANALYTICS
+    pub async fn get_recent_dashboard_transactions(&self) -> Result<crate::models::dashboard_models::RecentFeed, sqlx::Error> {
+        let records = sqlx::query(
+            r#"SELECT t.id, t.amount, TO_CHAR(t.transaction_date, 'YYYY-MM-DD') as date, 
+                      COALESCE(c.name, 'Uncategorized') as category, 
+                      COALESCE(c.type::TEXT, 'expense') as type, 
+                      COALESCE(p.name, 'Unknown') as counterparty, 
+                      t.status::TEXT as status 
+               FROM transactions t 
+               LEFT JOIN categories c ON t.category_id = c.id 
+               LEFT JOIN counterparties p ON t.counterparty_id = p.id 
+               ORDER BY t.transaction_date DESC, t.id DESC 
+               LIMIT 10"#
+        ).fetch_all(&self.connection).await?;
+
+        let transactions = records.into_iter().map(|row| {
+            crate::models::dashboard_models::RecentTransaction {
+                id: row.get::<i32, _>("id") as i64,
+                amount: row.get("amount"),
+                date: row.get("date"),
+                category: row.get("category"),
+                r#type: row.get("type"),
+                counterparty: row.get("counterparty"),
+                status: row.get("status"),
+            }
+        }).collect();
+
+        Ok(crate::models::dashboard_models::RecentFeed { transactions })
+    }
+
+    pub async fn get_dashboard_summary(&self) -> Result<crate::models::dashboard_models::DashboardSummary, sqlx::Error> {
+        let record = sqlx::query(
+            r#"SELECT 
+                 COALESCE(SUM(t.amount) FILTER (WHERE c.type = 'income'), 0.0) as total_income,
+                 COALESCE(SUM(t.amount) FILTER (WHERE c.type = 'expense'), 0.0) as total_expenses,
+                 COUNT(t.id) as total_transactions
+               FROM transactions t 
+               LEFT JOIN categories c ON t.category_id = c.id"#
+        ).fetch_one(&self.connection).await?;
+
+        let total_income: f64 = record.get("total_income");
+        let total_expenses: f64 = record.get("total_expenses");
+
+        Ok(crate::models::dashboard_models::DashboardSummary {
+            total_income,
+            total_expenses,
+            net_balance: total_income - total_expenses,
+            total_transactions: record.get::<i64, _>("total_transactions"),
+        })
+    }
+
+    pub async fn get_dashboard_categories(&self) -> Result<crate::models::dashboard_models::CategoryAnalytics, sqlx::Error> {
+        let records = sqlx::query(
+            r#"SELECT c.name as category, c.type::TEXT as type, SUM(t.amount) as total 
+               FROM transactions t 
+               JOIN categories c ON t.category_id = c.id 
+               GROUP BY c.name, c.type"#
+        ).fetch_all(&self.connection).await?;
+
+        let mut expense_categories = Vec::new();
+        let mut income_categories = Vec::new();
+
+        for row in records {
+            let cat_type: String = row.get("type");
+            let item = crate::models::dashboard_models::CategoryTotal {
+                category: row.get("category"),
+                total: row.get("total"),
+            };
+            if cat_type == "income" {
+                income_categories.push(item);
+            } else {
+                expense_categories.push(item);
+            }
+        }
+
+        Ok(crate::models::dashboard_models::CategoryAnalytics {
+            expense_categories,
+            income_categories,
+        })
+    }
+
+    pub async fn get_dashboard_trends(&self, year: i32) -> Result<crate::models::dashboard_models::TrendAnalytics, sqlx::Error> {
+        let records = sqlx::query(
+            r#"SELECT 
+                 TRIM(TO_CHAR(t.transaction_date, 'Month')) as month,
+                 CAST(EXTRACT(MONTH FROM t.transaction_date) AS INTEGER) as month_num,
+                 COALESCE(SUM(t.amount) FILTER (WHERE c.type = 'income'), 0.0) as income,
+                 COALESCE(SUM(t.amount) FILTER (WHERE c.type = 'expense'), 0.0) as expenses
+               FROM transactions t 
+               JOIN categories c ON t.category_id = c.id 
+               WHERE EXTRACT(YEAR FROM t.transaction_date) = $1::double precision 
+               GROUP BY month, month_num 
+               ORDER BY month_num"#
+        ).bind(year as f64).fetch_all(&self.connection).await?;
+
+        let months = records.into_iter().map(|row| {
+            let income: f64 = row.get("income");
+            let expenses: f64 = row.get("expenses");
+            crate::models::dashboard_models::MonthTrend {
+                month: row.get("month"),
+                income,
+                expenses,
+                net: income - expenses,
+            }
+        }).collect();
+
+        Ok(crate::models::dashboard_models::TrendAnalytics {
+            year,
+            months,
         })
     }
 }

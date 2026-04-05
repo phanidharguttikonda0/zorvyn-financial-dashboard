@@ -17,4 +17,5 @@ chrono = { version = "0.4.44", features = ["serde"] }
 validator = {version = "0.20.0", features = ["derive"]}
 base64 = "0.22.1"
 sha2 = "0.10.9"
-jsonwebtoken = "10.3.0"
+jsonwebtoken = { version = "10.3.0", features = ["rust_crypto"] }
+tower-http = { version = "0.5.2", features = ["cors"] }

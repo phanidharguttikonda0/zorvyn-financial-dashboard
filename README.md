@@ -1,35 +1,67 @@
-# Zorvyn Finance Tracker - Backend API Architecture
+# Zorvyn Finance Tracker - Backend API
 
-This repository holds the production-level system infrastructure powering the Zorvyn Finance Tracker dashboard. Built meticulously evaluating the strictest architectural paradigms around scaling, data isolation, performance security, and robust logical hierarchies.
+This is the backend for the Zorvyn Finance Dashboard. It is built to be clean, secure, and ready for production. The goal of this project is to manage users, roles, and financial records securely while providing summary analytics for a frontend dashboard.
 
-## Overview & The "Why" 
-The implementation transcends basic boilerplate API standards by adopting tightly-controlled constraints ensuring system robustness:
+## What We Have Implemented
 
-1. **Granular Multi-Tier Middleware & Component Separation**: Instead of an unwieldy single route-checking function routing all requests, security layers are specifically fractured across two distinct modular constraints (`block_viewer`, `require_admin`). The inner router trees explicitly combine using purely defined access rules preventing horizontal privilege climbing inherently regardless of future expansion scaling faults!
-2. **Built-in Concurrent Fixed Rate-Limitor Guard**: Utilizing pure raw rust `tokio` concurrency maps wrapping native IP lookups gracefully handling thread-bound memory to instantly squash potential volumetric DOS attacks beyond normal API constraints securely maintaining API sanity (**25 requests / min globally** limitation).
-3. **Rust `validator` Crates Mapping Data**: Payload fields explicitly drop bad behavior far prior to controller executions mapping accurate business constraints!
-4. **SQLX Embedded Compile-time Validations and Zero-Step Booting**: The migrations are explicitly injected right to the runtime via `#![sqlx(migrations)]` logic guaranteeing databases launch entirely cleanly upon zero setup commands via pure docker composition without developers running manual CLI triggers globally avoiding state misalignments.
-5. **Non-Blocking File Rolling**: Tracing operates efficiently, pushing logging over IO off to a dedicated worker explicitly ensuring requests do not backpedal off asynchronous lock holds wrapping day logs automatically! 
+We have implemented all the core requirements and optional enhancements from the assignment guidelines in the best way possible:
 
-## API Explorer
-You can view the full interactible layout listing exact permissions, variables, and API structure locally by navigating to:
+1. **User and Role Management (Role-Based Access Control)**:
+   - We set up three strict roles: `Viewer`, `Analyst`, and `Admin`.
+   - **How it works**: Instead of writing one messy function to check roles for every route, we created separate, reusable middleware checkpoints (`block_viewer` and `require_admin`). 
+   - **Why it's better**: This makes the code much cleaner and prevents security mistakes when adding new features later. 
+   - *Viewers* can only see summary data. *Analysts* can view specific transactions and trends. *Admins* have full control to create, update, and delete everything.
+
+2. **Financial Records & Dashboards**:
+   - Built complete CRUD (Create, Read, Update, Delete) APIs for transactions, categories, and counterparties.
+   - Designed specialized Dashboard APIs to fetch summaries like "Monthly Trends", "Total Expenses", and "Recent Activity".
+
+3. **Global Rate Limiting (Extra Security)**:
+   - Added a security measure that stops users or bots from sending too many requests and crashing the system (limited to 25 requests per minute per user).
+
+4. **Input Validation & CORS Handling**:
+   - Used the Rust `validator` library to check incoming data before it even reaches our database. This automatically rejects bad email formats or missing data with clear error messages.
+   - Fully enabled **Cross-Origin Resource Sharing (CORS)** via `tower-http`. This means any frontend framework (React, Vue, or completely separate local host ports) can talk to this backend safely without throwing "Failed to fetch" browser issues!
+
+5. **JWT Authentication**:
+   - Users get a secure JWT token when they sign in. All protected API routes verify this token automatically to ensure only logged-in users can access the data.
+
+6. **Automatic Database Migrations**:
+   - We used `sqlx` to embed our PostgreSQL database tables directly into the backend code. When you start the server, it automatically sets up the database tables for you. You don't have to run any extra commands to construct the database!
+
+7. **Asynchronous Code & Logging**:
+   - The application manages data quickly without freezing. We also added logging that saves server activities into files so we can track errors easily.
+
+8. **Docker Support (One-Click Setup)**:
+   - We created a `docker-compose.yml` and a multi-stage `Dockerfile`.
+   - This means you don't even need to install Rust or PostgreSQL on your computer. You just need Docker, and you can run the entire project with one simple command!
+
+## Project Structure Explained
+
+Here is a simple breakdown of how the code is organized:
+
+- `./migrations`: Contains the SQL scripts to create the database tables.
+- `docker-compose.yml`: Tells Docker how to start both the PostgreSQL database and our Backend Server together smoothly.
+- `public/`: Contains the Swagger API documentation HTML and the visual Database ER diagram.
+- `src/controllers`: These files handle the actual API requests. They take the data from the user and respond with success or error messages.
+- `src/middlewares`: Contains our security checkpoints (Rate Limiting, JWT Token Checker, and Role-Based Access Guards) that run *before* the controllers.
+- `src/models`: Defines exactly what our data looks like (like the Transaction or User structures) and handles the validation logic.
+- `src/routes`: Connects URLs (like `/transaction` or `/users`) safely to their respective controllers.
+- `src/services`: Handles the heavier logic, like explicitly connecting to PostgreSQL and writing database queries, or checking passwords.
+
+## How to Run the Project
+
+Because the project is fully Dockerized, you can start everything (the database and the server) with just one command. Make sure you have Docker Desktop installed, then run:
+
+```bash
+docker compose up --build -d
+```
+*(The backend will wait for the database to boot, set up the tables automatically, and then prepare the server on port 7878)*
+
+## API Documentation
+You can explore the interactive API documentation and test the routes directly in your browser!
+Once the project is running using Docker, open this link:
 **[http://localhost:7878/docs](http://localhost:7878/docs)** 
 
-*(Generates a pristine, full Swagger UI automatically inside the network locally!)*
-
-## Getting Started (Docker Magic)
-The repository leverages extremely stripped down lightweight multi-stage builds guaranteeing total operation abstraction! 
-Absolutely zero Rust environment, variables, or database tracking components needed on the host machine. 
-1. `docker compose up --build`
-*(The backend sequentially halts itself securely until the internal Postgres network is actively listening, configures schemas, then boots cleanly over `port: 7878`)*
-
-## Database Structure Configuration
+## Database Schema Model
 ![ER Diagram](public/ER-Diagram.svg)
-
-## Explicit Project Structure
-- `.env.example / docker-compose.yml`: Top level deployment rules, configuring standard routing interfaces mirroring mapping across Alpine images locally and on bare metal.
-- `src/controllers`: Clean API handlers completely abstracted out of data persistence constraints. These components directly invoke pure state parameters without internal data handling.
-- `src/middlewares`: Modular security enforcement files including `JWT Header Parses`, `IP Global Fixed Window Request Pinging Tracker`, and the exact `Role Guard Rejections`.
-- `src/models`: System data layout structs tied natively to `serde` tracking enforcing strict validation checks directly at standard interface reception explicitly compressing network layouts (like explicitly dropping unset attributes implicitly minimizing payloads).
-- `src/routes`: Handles nested grouping explicit maps allowing robust layers! Highly clustered configurations tying controllers securely back over modular endpoints cleanly wrapping endpoints strictly.
-- `src/services`: Shared system handlers establishing DB states (`db.rs`) injecting exact transaction queries without blocking controller logic heavily optimizing separation routines, and authentication handlers generating and checking token cryptography maps (`authentication_services.rs`).
